@@ -1,0 +1,70 @@
+#cloud-config
+
+# In order to access RStudio server via the web interface, you must log on with
+# a user account that allows password access. This script does not add that user
+# by default. You may either ssh as root into the server and `adduser` as
+# normal, or script a user addition here:
+
+# users:
+#   - name: # username #
+#     lock-passwd: false # allow login with password
+#     passwd: # hashed password #
+
+# Add apt mirror to get the latest version of R necessary for Shiny
+apt_sources:
+  - source: deb https://cran.rstudio.com/bin/linux/ubuntu/ trusty/
+    keyid: E084DAB9
+package_upgrade: true
+packages:
+  - nginx
+  - libxml2-dev
+  - libcurl4-gnutls-dev
+  - libssl-dev
+  - r-base
+  - r-base-dev
+  - libapparmor1
+  - gdebi-core
+  - git-core
+  - libstdc++6-4.7-dev
+write_files:
+  # Forward ports for Rstudio and Shiny
+  - path: /etc/nginx/sites-enabled/default
+    content: |
+      server {
+        listen 80 default_server;
+        listen [::]:80 default_server ipv6only=on;
+
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+
+        # Make site accessible from http://localhost/
+        server_name localhost;
+
+        location / {
+          # First attempt to serve request as file, then
+          # as directory, then fall back to displaying a 404.
+          try_files $uri $uri/ =404;
+          # Uncomment to enable naxsi on this location
+          # include /etc/nginx/naxsi.rules
+        }
+
+        location /shiny/ {
+          proxy_pass http://127.0.0.1:3838/;
+        }
+
+        location /rstudio/ {
+          proxy_pass http://127.0.0.1:8787/;
+        }
+      }
+runcmd:
+  # Install "shiny" package for R
+  - R -e 'install.packages(c("shiny", "rmarkdown"), repos="https://cran.rstudio.com/")'
+  # Download and install rstudio-server
+  - wget https://download2.rstudio.org/rstudio-server-1.0.143-amd64.deb
+  - gdebi -n rstudio-server-1.0.143-amd64.deb
+  # Download and install Shiny
+  - wget https://download3.rstudio.org/ubuntu-12.04/x86_64/shiny-server-1.4.2.786-amd64.deb
+  - gdebi -n shiny-server-1.5.1.deb
+  # Clean package files
+  - rm *.deb
+  - service nginx restart
