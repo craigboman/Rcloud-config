@@ -9,6 +9,10 @@
 #   - name: # username #
 #     lock-passwd: false # allow login with password
 #     passwd: # hashed password #
+#
+#     Or run two lines, after boot:
+#     $ sudo gpasswd -a <defaultuser>
+#     $ sudo gpasswd -a rstudio
 
 # Add apt mirror to get the latest version of R necessary for Shiny
 apt_sources:
